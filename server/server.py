@@ -1,3 +1,12 @@
+"""DNCI Server: Communication interface
+Usage: server [--help|--version]
+       server [options]
+
+Options:
+-h, --help      Show this help message.
+--version       Show version information.
+"""
+
 import hashlib
 import json
 import logging
@@ -6,7 +15,16 @@ import os
 import time
 import threading
 import socket
+import sys
+
 import zmq
+
+from __init__ import *
+
+NOTICE = """DNCI Copyright (C) 2024 Oliver Nguyen
+This program comes with ABSOLUTELY NO WARRANTY; for details type `show w`.
+This is free software, and you are welcome to redistribute it
+under certain conditions; type `show c` for details."""
 
 login_socket_address = "tcp://*:5555"
 receive_socket_address = "tcp://*:5557"
@@ -120,8 +138,36 @@ def run_server():
     logger.info("Message thread joined")
 
 if __name__ == "__main__":
-    logging.config.fileConfig('config/logging.conf')
+    if ("-h" in sys.argv) or ("--help" in sys.argv):
+        print(__doc__)
+        exit()
+    elif "--version" in sys.argv:
+        print(f"DNCI Server v{__version__} [{internal_release_phase}; "
+              f"{internal_release_date}]")
+        exit()
+
+    print(f"Welcome to DNCI Server v{version} "
+          f"[{internal_release_phase}; {internal_release_date}]\n")
+
+    print(NOTICE)
+
+    logging.config.fileConfig('config/logging.verbose.conf')
     logger = logging.getLogger('server')
+
+    logger.info("Starting server")
+    logger.info(f"DNCI server version: {version}")
+
+    command = "-"
+    while command != "":
+        command = input("\nPress [ENTER] to start or type a command...")
+        if command == 'show w':
+            license_pages = ["150", "160", "170"]
+            display_license_pages(license_pages)
+        elif command == 'show c':
+            license_pages = ["040", "050", "051", "060", "061", "062",
+                             "063", "070", "071", "072", "080", "081",
+                             "090", "100"]
+            display_license_pages(license_pages)
 
     # Initialize ZeroMQ context
     context = zmq.Context()
