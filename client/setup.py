@@ -7,5 +7,8 @@ os.system('mkdir logs')
 
 files_to_create = ['logs/client.log',]
 
-with open('logs/client.log', 'x'):
-    pass
+for path in files_to_create:
+    with open(path, 'x'):
+        pass
+
+print("Setup completed successfully")

@@ -1,4 +1,4 @@
-"""Setup program for dnci client.
+"""Setup program for dnci server.
 Usage: setup"""
 
 import os
@@ -9,5 +9,8 @@ files_to_create = ['logs/client.log',
                    'data/users.json',
                    'data/messages.json',]
 
-with open('logs/client.log', 'x'):
-    pass
+for path in files_to_create:
+    with open(path, 'x'):
+        pass
+
+print("Setup completed successfully")
