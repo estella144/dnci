@@ -49,6 +49,8 @@ receive_socket_address = "tcp://*:5557"
 message_socket_address = "tcp://*:5556"
 
 def get_server_ip():
+    """Gets the IP address of the server."""
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
@@ -56,6 +58,59 @@ def get_server_ip():
     finally:
         s.close()
     return ip
+
+def handle_exiting_args():
+    """Handles --help and --version command line arguments."""
+
+    if ("-h" in sys.argv) or ("--help" in sys.argv):
+        print(__doc__)
+    elif "--version" in sys.argv:
+        print(f"DNCI Server v{__version__} [{internal_release_phase}; "
+              f"{internal_release_date}]")
+    exit()
+
+def display_initial_prompt():
+    command = "-"
+    while command != "":
+        command = input("\nPress [ENTER] to start or type a command...")
+        if command == 'show w':
+            license_pages = ["150", "160", "170"]
+            display_license_pages(license_pages)
+        elif command == 'show c':
+            license_pages = ["040", "050", "051", "060", "061", "062",
+                             "063", "070", "071", "072", "080", "081",
+                             "090", "100"]
+            display_license_pages(license_pages)
+
+def setup_zmq_sockets():
+    """Sets up ZMQ sockets to connect to clients.
+    The server initializes a ZMQ context and then creates a REP socket
+    for login, a PULL socket for receiving messages, and a PUB socket
+    for broadcasting messages.
+    """
+
+    # Initialize ZeroMQ context
+    context = zmq.Context()
+    logger.info('Initialized zmq context')
+
+    # Set up REP socket for login/logout
+    login_socket = context.socket(zmq.REP)
+    login_socket.bind(login_socket_address)
+    logger.info(f"Binded login socket to {login_socket_address}")
+
+    # Set up PULL socket for receiving messages from clients
+    receive_socket = context.socket(zmq.PULL)
+    receive_socket.bind(receive_socket_address)
+    logger.info(f"Binded receive socket to {receive_socket_address}")
+
+    # Set up PUB socket for message broadcasting
+    message_socket = context.socket(zmq.PUB)
+    message_socket.bind(message_socket_address)
+    logger.info(f"Binded message socket to {message_socket_address}")
+
+    return  {"login_socket": login_socket,
+             "receive_socket": receive_socket,
+             "message_socket": message_socket}
 
 # Function to load users from a JSON file
 def load_users(filename='data/users.json'):
@@ -68,6 +123,7 @@ def load_users(filename='data/users.json'):
 # Function to load messages from a JSON file
 def load_messages(filename='data/messages.json'):
     """Loads messages from a JSON file."""
+
     if os.path.exists(filename):
         with open(filename, 'r') as file:
             data = json.load(file)
@@ -80,6 +136,7 @@ def load_messages(filename='data/messages.json'):
 # Function to save messages to a JSON file
 def save_messages(messages, filename='data/messages.json'):
     """Saves messages to a JSON file."""
+
     with open(filename, 'w') as file:
         json.dump(messages, file, indent=4)
     logger.info(f"Saved messages to {filename}")
@@ -99,12 +156,16 @@ def handle_login():
 
     while True:
         message = login_socket.recv_json()
+
         if message['type'] == "LOGIN":
             username = message['username']
             password_hash = message['password']
             logger.info(f"User {username} attempted to login")
+
             if username in USERS and USERS[username] == password_hash:
-                login_socket.send_json({"status": "success"})
+                login_socket.send_json(
+                    {"status": "success",
+                    "messages": load_messages()['messages']})
                 logger.info(f"User {username} logged in successfully")
             else:
                 login_socket.send_json({"status": "fail"})
@@ -143,6 +204,7 @@ def run_server():
     """Main server loop.
     Creates a login thread and a message handling thread.
     """
+
     logger.info(f"Starting server on IP address {get_server_ip()}")
     login_thread = threading.Thread(target=handle_login)
     login_thread.start()
@@ -156,17 +218,10 @@ def run_server():
     logger.info("Message thread joined")
 
 if __name__ == "__main__":
-    if ("-h" in sys.argv) or ("--help" in sys.argv):
-        print(__doc__)
-        exit()
-    elif "--version" in sys.argv:
-        print(f"DNCI Server v{__version__} [{internal_release_phase}; "
-              f"{internal_release_date}]")
-        exit()
+    handle_exiting_args()
 
     print(f"Welcome to DNCI Server v{version} "
           f"[{internal_release_phase}; {internal_release_date}]\n")
-
     print(NOTICE)
 
     logging.config.fileConfig('config/logging.verbose.conf')
@@ -175,41 +230,14 @@ if __name__ == "__main__":
     logger.info("Starting server")
     logger.info(f"DNCI server version: {version}")
 
-    command = "-"
-    while command != "":
-        command = input("\nPress [ENTER] to start or type a command...")
-        if command == 'show w':
-            license_pages = ["150", "160", "170"]
-            display_license_pages(license_pages)
-        elif command == 'show c':
-            license_pages = ["040", "050", "051", "060", "061", "062",
-                             "063", "070", "071", "072", "080", "081",
-                             "090", "100"]
-            display_license_pages(license_pages)
+    display_initial_prompt()
 
-    # Initialize ZeroMQ context
-    context = zmq.Context()
-    logger.info('Initialized zmq context')
+    sockets = setup_zmq_sockets()
+    login_socket = sockets["login_socket"]
+    receive_socket = sockets["receive_socket"]
+    message_socket = sockets["message_socket"]
 
-    # Set up REP socket for login/logout
-    login_socket = context.socket(zmq.REP)
-    login_socket.bind(login_socket_address)
-    logger.info(f"Binded login socket to {login_socket_address}")
-
-    # Set up PULL socket for receiving messages from clients
-    receive_socket = context.socket(zmq.PULL)
-    receive_socket.bind(receive_socket_address)
-    logger.info(f"Binded receive socket to {receive_socket_address}")
-
-    # Set up PUB socket for message broadcasting
-    message_socket = context.socket(zmq.PUB)
-    message_socket.bind(message_socket_address)
-    logger.info(f"Binded message socket to {message_socket_address}")
-
-    # Load users
     USERS = load_users()
-
-    # Load existing messages
     messages = load_messages()
 
     run_server()

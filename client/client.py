@@ -212,6 +212,8 @@ if __name__ == "__main__":
     logger.info("Starting client")
     logger.info(f"DNCI client version: {version}")
 
+    print(NOTICE)
+
     command = "-"
     while command != "":
         command = input("Press [ENTER] to login or type a command...")
