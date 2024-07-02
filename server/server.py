@@ -64,10 +64,11 @@ def handle_exiting_args():
 
     if ("-h" in sys.argv) or ("--help" in sys.argv):
         print(__doc__)
+        exit()
     elif "--version" in sys.argv:
         print(f"DNCI Server v{__version__} [{internal_release_phase}; "
               f"{internal_release_date}]")
-    exit()
+        exit()
 
 def display_initial_prompt():
     command = "-"

@@ -119,7 +119,7 @@ def receive_messages():
         logging.info("Printed message")
 
 # Send a message
-def send_message(username: str, msg: str):
+def send_message(username: str, msg: str) -> None:
     """Sends a message to the server.
     The client adds a timestamp to the message. The message data is
     stored in a dict. It then serializes the message into a JSON
@@ -138,7 +138,19 @@ def send_message(username: str, msg: str):
     send_socket.send_string(message_json)
     logger.info("Sent message to server")
 
-def login(username: str, password_hash: str):
+def display_initial_messages(messages: list) -> None:
+    """Displays initial messages from the server."""
+    print("Last 10 messages on server:")
+    for message_data in messages:
+        formatted_message = MESSAGE_FORMAT.format(
+            time=message_data['time'],
+            sender=message_data['sender'],
+            sender_ip=message_data['sender_ip'],
+            message=message_data['message']
+        )
+        print(formatted_message)
+
+def login(username: str, password_hash: str) -> dict:
     """Logs in the user.
     The client requests a username and password from the user. It then
     hashes the password and sends the username and password to the
@@ -170,6 +182,11 @@ def main_loop(username: str):
         cmd = input(f"dnci:{username}@{get_client_ip()}> ")
         if cmd == "logout":
             break
+        elif cmd == "help":
+            print("DNCI commands:")
+            print("help    Displays this help message.")
+            print("logout  Logs the user out.")
+            print("send    Sends a message to the server.")
         elif cmd == "send":
             msg = input("Enter message: ")
             send_message(username, msg)
@@ -187,8 +204,10 @@ def start_client():
     response = login(username, password_hash)
 
     if response['status'] == "success":
-        print("Login successful")
+        print("Login successful\n")
         logger.info("Login successful")
+        display_initial_messages(response.get("messages", []))
+        print("Welcome to DNCI. Type `help` for help.")
         main_loop(username)
     else:
         print("Login failed")
